@@ -1,0 +1,214 @@
+---
+Metadata:
+  AWSToolsMetrics:
+    IaC_Generator: "arn:aws:cloudformation:eu-north-1:831926599812:generatedTemplate/dfc601a1-413a-48b5-a857-3bdcde30ee5c"
+Parameters:
+  LambdaFunctionOrderProcessorCodeImageUriK0kje:
+    NoEcho: "true"
+    Type: "String"
+    Description: "URI of a [container image](https://docs.aws.amazon.com/lambda/latest/dg/lambda-images.html)\
+      \ in the Amazon ECR registry."
+  LambdaFunctionOrderProcessorCodeZipFilejAi32:
+    NoEcho: "true"
+    Type: "String"
+    Description: "(Node.js and Python) The source code of your Lambda function. If\
+      \ you include your function source inline with this parameter, CFN places it\
+      \ in a file named ``index`` and zips it to create a [deployment package](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html).\
+      \ This zip file cannot exceed 4MB. For the ``Handler`` property, the first part\
+      \ of the handler identifier must be ``index``. For example, ``index.handler``.\n\
+      \  When you specify source code inline for a Node.js function, the ``index``\
+      \ file that CFN creates uses the extension ``.js``. This means that LAM treats\
+      \ the file as a CommonJS module. ES modules aren't supported for inline functions.\n\
+      \   For JSON, you must escape quotes and special characters such as newline\
+      \ (``\\n``) with a backslash.\n If you specify a function that interacts with\
+      \ an AWS CloudFormation custom resource, you don't have to write your own functions\
+      \ to send responses to the custom resource that invoked the function. AWS CloudFormation\
+      \ provides a response module ([cfn-response](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-lambda-function-code-cfnresponsemodule.html))\
+      \ that simplifies sending responses. See [Using Lambda with CloudFormation](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudformation.html)\
+      \ for details."
+  LambdaFunctionOrderProcessorCodeS3BucketLOTj6:
+    NoEcho: "true"
+    Type: "String"
+    Description: "An Amazon S3 bucket in the same AWS-Region as your function. The\
+      \ bucket can be in a different AWS-account."
+  LambdaFunctionOrderProcessorCodeS3KeypL85u:
+    NoEcho: "true"
+    Type: "String"
+    Description: "The Amazon S3 key of the deployment package."
+  LambdaFunctionOrderProcessorCodeS3ObjectVersionuqTY2:
+    NoEcho: "true"
+    Type: "String"
+    Description: "For versioned objects, the version of the deployment package object\
+      \ to use."
+Resources:
+  SQSQueueOrderQueue:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::SQS::Queue"
+    DeletionPolicy: "Retain"
+    Properties:
+      SqsManagedSseEnabled: true
+      ReceiveMessageWaitTimeSeconds: 0
+      DelaySeconds: 0
+      RedrivePolicy:
+        deadLetterTargetArn: "arn:aws:sqs:eu-north-1:831926599812:OrderDLQ"
+        maxReceiveCount: 3
+      MessageRetentionPeriod: 345600
+      MaximumMessageSize: 262144
+      VisibilityTimeout: 30
+      QueueName: "OrderQueue"
+  IAMRoleOrderProcessorrolebhj8wb75:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::IAM::Role"
+    DeletionPolicy: "Retain"
+    Properties:
+      Path: "/service-role/"
+      ManagedPolicyArns:
+      - Ref: "IAMManagedPolicyPolicyserviceroleAWSLambdaBasicExecutionRole3c9f1c52c3e7417181868ebb1078c75c"
+      - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+      - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+      MaxSessionDuration: 3600
+      RoleName: "OrderProcessor-role-bhj8wb75"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Action: "sts:AssumeRole"
+          Effect: "Allow"
+          Principal:
+            Service: "lambda.amazonaws.com"
+  SNSTopicOrderTopic:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::SNS::Topic"
+    DeletionPolicy: "Retain"
+    Properties:
+      FifoTopic: false
+      Subscription:
+      - Endpoint:
+          Fn::GetAtt:
+          - "SQSQueueOrderQueue"
+          - "Arn"
+        Protocol: "sqs"
+      TracingConfig: "PassThrough"
+      ArchivePolicy: {}
+      TopicName: "OrderTopic"
+  LambdaFunctionOrderProcessor:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::Lambda::Function"
+    DeletionPolicy: "Retain"
+    Properties:
+      MemorySize: 128
+      Description: ""
+      TracingConfig:
+        Mode: "PassThrough"
+      Timeout: 3
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: "Auto"
+      Handler: "lambda_function.lambda_handler"
+      Code:
+        S3ObjectVersion:
+          Ref: "LambdaFunctionOrderProcessorCodeS3ObjectVersionuqTY2"
+        S3Bucket:
+          Ref: "LambdaFunctionOrderProcessorCodeS3BucketLOTj6"
+        ZipFile:
+          Ref: "LambdaFunctionOrderProcessorCodeZipFilejAi32"
+        ImageUri:
+          Ref: "LambdaFunctionOrderProcessorCodeImageUriK0kje"
+        S3Key:
+          Ref: "LambdaFunctionOrderProcessorCodeS3KeypL85u"
+      Role:
+        Fn::GetAtt:
+        - "IAMRoleOrderProcessorrolebhj8wb75"
+        - "Arn"
+      FileSystemConfigs: []
+      FunctionName: "OrderProcessor"
+      Runtime: "python3.13"
+      PackageType: "Zip"
+      LoggingConfig:
+        LogFormat: "Text"
+        LogGroup: "/aws/lambda/OrderProcessor"
+      RecursiveLoop: "Terminate"
+      EphemeralStorage:
+        Size: 512
+      Architectures:
+      - "x86_64"
+  LambdaEventSourceMapping:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::Lambda::EventSourceMapping"
+    DeletionPolicy: "Retain"
+    Properties:
+      BatchSize: 10
+      FunctionName:
+        Fn::GetAtt:
+        - "LambdaFunctionOrderProcessor"
+        - "Arn"
+      Enabled: true
+      EventSourceArn:
+        Fn::GetAtt:
+        - "SQSQueueOrderQueue"
+        - "Arn"
+      Tags: []
+      MetricsConfig:
+        Metrics: []
+      MaximumBatchingWindowInSeconds: 0
+  IAMManagedPolicyPolicyserviceroleAWSLambdaBasicExecutionRole3c9f1c52c3e7417181868ebb1078c75c:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: "Retain"
+    Properties:
+      ManagedPolicyName: "AWSLambdaBasicExecutionRole-3c9f1c52-c3e7-4171-8186-8ebb1078c75c"
+      Path: "/service-role/"
+      Description: ""
+      Groups: []
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Resource: "arn:aws:logs:eu-north-1:831926599812:*"
+          Action: "logs:CreateLogGroup"
+          Effect: "Allow"
+        - Resource:
+          - "arn:aws:logs:eu-north-1:831926599812:log-group:/aws/lambda/OrderProcessor:*"
+          Action:
+          - "logs:CreateLogStream"
+          - "logs:PutLogEvents"
+          Effect: "Allow"
+      Roles:
+      - "OrderProcessor-role-bhj8wb75"
+      Users: []
+  DynamoDBTableOrders:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::DynamoDB::Table"
+    DeletionPolicy: "Retain"
+    Properties:
+      SSESpecification:
+        SSEEnabled: false
+      TableName: "Orders"
+      AttributeDefinitions:
+      - AttributeType: "S"
+        AttributeName: "orderId"
+      ContributorInsightsSpecification:
+        Enabled: false
+      BillingMode: "PAY_PER_REQUEST"
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+      WarmThroughput:
+        ReadUnitsPerSecond: 12000
+        WriteUnitsPerSecond: 4000
+      KeySchema:
+      - KeyType: "HASH"
+        AttributeName: "orderId"
+      DeletionProtectionEnabled: false
+      TableClass: "STANDARD"
+      Tags: []
+      TimeToLiveSpecification:
+        Enabled: false
+  SQSQueueOrderDLQ:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::SQS::Queue"
+    DeletionPolicy: "Retain"
+    Properties:
+      SqsManagedSseEnabled: true
+      ReceiveMessageWaitTimeSeconds: 0
+      DelaySeconds: 0
+      MessageRetentionPeriod: 345600
+      MaximumMessageSize: 262144
+      VisibilityTimeout: 30
+      QueueName: "OrderDLQ"
