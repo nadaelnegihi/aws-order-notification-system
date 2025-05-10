@@ -1,5 +1,5 @@
 # AWS Order Notification System
-## 🛠️ Setup Instructions
+##  Setup Instructions
 
 1. **Create DynamoDB Table**
    - Table name: `Orders`
