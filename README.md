@@ -1,16 +1,5 @@
 # aws-order-notification-system
 # AWS Order Notification System
-
-This project is a simplified event-driven backend system for an e-commerce platform using AWS services: SNS, SQS, Lambda, and DynamoDB.
-
-## 📦 Architecture Overview
-
-- **SNS Topic (`OrderTopic`)**: Broadcasts order messages
-- **SQS Queue (`OrderQueue`)**: Buffers order events
-- **Lambda (`OrderProcessor`)**: Processes messages and stores them
-- **DynamoDB (`Orders`)**: Stores order data
-- **DLQ (`OrderDLQ`)**: Catches failed messages
-
 ## 🛠️ Setup Instructions
 
 1. **Create DynamoDB Table**
@@ -38,8 +27,5 @@ This project is a simplified event-driven backend system for an e-commerce platf
 
 6. **Publish Test Message to SNS**
 
-## 🔁 Flow
-1. Order is published to SNS
-2. Routed to SQS
-3. Lambda triggers and saves to DynamoDB
+## Flow
 ![aws drawio](https://github.com/user-attachments/assets/2901947e-d585-4473-858c-c48ee2f54c30)
