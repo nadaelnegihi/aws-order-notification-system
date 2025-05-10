@@ -1,4 +1,3 @@
-# aws-order-notification-system
 # AWS Order Notification System
 ## 🛠️ Setup Instructions
 
